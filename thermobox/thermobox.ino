@@ -1,3 +1,16 @@
+#include <LiquidCrystal.h>
+/*
+ Thermo Box Project 
+ -------------------
+ Arduino pro mini for smart controller
+ 10k pot for set temprature 
+ TEC1-12706 is heatexchange usig peltier
+ 16x2 display for status and temprature display
+ LM35 for temrature sensore
+ 3 LED with 220 Oms for indication
+ 3 Relay with BC547 driver for peltier power switch with polarity change
+ Heatsink with fan for peltier heat exhaust
+ */
 const int analogInPin = A0;     // Analog input pin that the potentiometer is attached to
 const int maxCelsius = 80;     // Maximum Temparature
 const int minCelsius = 0;     // Minimum Temparature
@@ -8,6 +21,7 @@ int roomCelsius = 0;      // Room temprature from (Read from sensore)
 int boxCelsius = 0;      // Box inside temrature  (Read from sensore)
 int fanRuntime = 60;    // Main fan runtime after peltier turn off (in sec);
 
+LiquidCrystal lcd(6,5,4,3,2,1);
 void setup() {
    digitalWrite(13, HIGH);   // turn the LED on 
    pinMode(13, OUTPUT); //LED Indicator
@@ -20,13 +34,21 @@ void setup() {
    digitalWrite(10, LOW);
    // initialize serial communications at 9600 bps:
    Serial.begin(9600);
-   //calibration
-   
+   Serial.println("SETUP");
+   // set up the LCD's number of columns and rows:
+   lcd.begin(16, 2);
+   lcd.print("Thermo Box"); //Print data
+   lcd.setCursor(0, 1); //2nd Line
+   lcd.print("Booting....");
+   delay(3000); //
 }
 
 void loop() {
    digitalWrite(13, HIGH);   // turn the LED on
-   
+
+  lcd.setCursor(0, 0); //1st Line 
+
+  lcd.setCursor(0, 1); //2nd Line  
   //Fan Run time logic
   if(fanRuntime == 0){
      digitalWrite(10, LOW); //turn off fan
@@ -46,16 +68,18 @@ void loop() {
     digitalWrite(11, LOW); //Turn off polarity relays
     delay(300);          //3 Second dealy
     Serial.println("Done 3s delay");
-    
+    lcd.print("Done :)");
   }else{
     
     //polarity logic
     if(setCelsius > roomCelsius){
       digitalWrite(11, HIGH); //Turn on polarity relays, switch to Heating mode;
       Serial.println("Heating..");
+      lcd.print("Heating...");
     }else{
       digitalWrite(11, LOW); //Turn off polarity relays, switch to cooling mode;
       Serial.println("Cooling");
+      lcd.print("Cooling...");
       }
       
     //Turn on peltier to start heat exchange
