@@ -54,7 +54,7 @@ void loop() {
   digitalWrite(13, HIGH);   // turn the LED on
   boxCelsius = (analogRead(A5)*0.48828125); //Read data from LM35 and convert to Celsius
   setCelsius = EEPROM.read(0);
-  
+  lcd.clear(); //clear the LCD
   lcd.setCursor(0, 0); //1st Line 
   lcd.print("ST:");
   lcd.print((int)setCelsius);
@@ -78,9 +78,9 @@ void loop() {
     //Set temprature reached turn off peltier
     digitalWrite(12, LOW);   //Turn off main realy
     digitalWrite(11, LOW); //Turn off polarity relays
-    delay(300);          //3 Second dealy
-    //Serial.println("Done 3s delay");
-    lcd.print("Done :) 100 %");
+    lcd.print("Done :) 100 %"); //show message
+    delay(5000);          //5 Second dealy
+    
   }else{
     
     //polarity logic
@@ -95,9 +95,9 @@ void loop() {
       digitalWrite(11, LOW); //Turn off polarity relays, switch to cooling mode;
       //Calculate progress in reverse pattern
       if(boxCelsius > initBoxTmp){
-        initBoxTmp =boxCelsius+0.1; //If user places very hot object inside thermobox and it slowly start to heat up the box
+        initBoxTmp = boxCelsius+0.1; //If user places very hot object inside thermobox and it slowly start to heat up the box
       }
-      progress=100-((100/initBoxTmp)*boxCelsius); //this calculation only works till min temp 0 Celsius
+      progress=100-map(boxCelsius,setCelsius,initBoxTmp,0,100);  //Maping input and converting to % 
 
       lcd.print("Cooling...");
       lcd.print((int)progress);
