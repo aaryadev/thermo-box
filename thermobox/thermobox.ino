@@ -11,19 +11,17 @@
  3 Relay with BC547 driver for peltier power switch with polarity change
  Heatsink with fan for peltier heat exhaust
  */
-const int analogInPin = A4;     // Analog input pin that the potentiometer is attached to
 const int boxPin     =A5;        //thermo box sensor pin
-const int roomPin    =A6;        //room sensor pin
 const int maxCelsius = 80;     // Maximum Temparature
 const int minCelsius = 0;     // Minimum Temparature
 const int maxFanruntime = 60; // Max fan running time
 float setCelsius = 0;         // Celsius set by user [will bechanged by potentiometer]
-float potValue = 0;          // Potentiometer value  (Read from potentiometer)
-float roomCelsius = 0;      // Room temprature from (Read from sensore)
 float boxCelsius = 0;      // Box inside temrature  (Read from sensore)
 int fanRuntime = 60;    // Main fan runtime after peltier turn off (in sec);
+float progress   = 0; //Thermo exchange progress
+float initBoxTmp = 0; //Initial Box temprature 
 
-LiquidCrystal lcd(7,6,5,4,3,2);
+LiquidCrystal lcd(7,6,5,4,3,2); //setup the pins for display
 void setup() {
    digitalWrite(13, HIGH);   // turn the LED on 
    digitalWrite(8, HIGH);   // turn the screen backlight on
@@ -45,69 +43,65 @@ void setup() {
    lcd.print("Thermo Box"); //Print data
    lcd.setCursor(0, 1); //2nd Line
    lcd.print("Booting....");
-   delay(3000); //let sensore calibrate 
-  if(EEPROM.read(0) == 0 || EEPROM.read(0) == null){
-    EEPROM.update(0,25); //set to default 25 C (room temprature)
+  if(EEPROM.read(0) > maxCelsius){ //Usually vallue will be 255 as default
+    EEPROM.write(0,25); //write default value to room temprature
   }
-      
+   delay(3000); //let sensore calibration
+   initBoxTmp=(analogRead(A5)*0.48828125);
 }
 
 void loop() {
-   digitalWrite(13, HIGH);   // turn the LED on
-   Serial.println(EEPROM.read(0));
-  //Get Room temprture 
-  roomCelsius = (analogRead(A6)*0.48828125);
-  boxCelsius = (analogRead(A5)*0.48828125);
-  //Serial.println(analogRead(A5));
-  //Serial.println(analogRead(A5)*0.48828125);
-
-  // read the analog in value:
-  potValue = analogRead(analogInPin);
-  // map it to the range of the analog out:
-  setCelsius = map(potValue, 0, 1023, minCelsius, maxCelsius);
-
+  digitalWrite(13, HIGH);   // turn the LED on
+  boxCelsius = (analogRead(A5)*0.48828125); //Read data from LM35 and convert to Celsius
+  setCelsius = EEPROM.read(0);
   
   lcd.setCursor(0, 0); //1st Line 
-  lcd.print("B:");
-  lcd.print(boxCelsius);
-  lcd.print("c");
+  lcd.print("ST:");
+  lcd.print((int)setCelsius);
+  lcd.print("\337C");
   lcd.print(" ");
-  lcd.print("R:");
-  lcd.print(roomCelsius);
-  lcd.print("c");
-  lcd.print("S:");
-  lcd.print(setCelsius);
-  lcd.print("c");
-  lcd.print(" ");
+  lcd.print("BOX:");
+  lcd.print((int)boxCelsius);
+  lcd.print("\337C");
   lcd.setCursor(0, 1); //2nd Line  
   //Fan Run time logic
   if(fanRuntime == 0){
      digitalWrite(10, LOW); //turn off fan
     }else{
        digitalWrite(10, HIGH); //turn on fan
-      }
+    }
 
       
   
   //Temprature logic
-  if(setCelsius == boxCelsius){
+  if(setCelsius == (int)boxCelsius){
     //Set temprature reached turn off peltier
     digitalWrite(12, LOW);   //Turn off main realy
     digitalWrite(11, LOW); //Turn off polarity relays
     delay(300);          //3 Second dealy
     //Serial.println("Done 3s delay");
-    lcd.print("Done :)");
+    lcd.print("Done :) 100 %");
   }else{
     
     //polarity logic
-    if(setCelsius > roomCelsius){
+    if(setCelsius > boxCelsius){
       digitalWrite(11, HIGH); //Turn on polarity relays, switch to Heating mode;
-     // Serial.println("Heating..");
+      //calculate progress
+      progress = (boxCelsius/setCelsius)*100;
       lcd.print("Heating...");
+      lcd.print((int)progress);
+      lcd.print("%");
     }else{
       digitalWrite(11, LOW); //Turn off polarity relays, switch to cooling mode;
-      //Serial.println("Cooling");
+      //Calculate progress in reverse pattern
+      if(boxCelsius > initBoxTmp){
+        initBoxTmp =boxCelsius+0.1; //If user places very hot object inside thermobox and it slowly start to heat up the box
+      }
+      progress=100-((100/initBoxTmp)*boxCelsius); //this calculation only works till min temp 0 Celsius
+
       lcd.print("Cooling...");
+      lcd.print((int)progress);
+      lcd.print("%");
       }
       
     //Turn on peltier to start heat exchange
@@ -128,6 +122,5 @@ void loop() {
   if(fanRuntime > 0){
     fanRuntime --; //decrease 1 sec,till 0
    }
-  // Serial.println(fanRuntime);
 }
 
